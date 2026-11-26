@@ -157,6 +157,8 @@
   .switch input:checked::after { left: 17px; }
   .bulk { display: flex; gap: 6px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
   .bulk .field { width: 62px; text-align: center; padding: 8px; }
+  .bestn { display: flex; align-items: center; gap: 8px; margin: 2px 2px 6px; }
+  .bestn .field { width: 62px; text-align: center; padding: 7px; }
   .warn { color: #b3401f; font-size: 13px; margin-top: 8px; }
 
   /* what-if */
@@ -261,21 +263,33 @@
   const course = () => state.courses.find(c => c.id === state.active) || state.courses[0];
 
   /* ---------- math ---------- */
+  // mode: 'cur' (graded only), 'worst' (pending = 0), 'best' (pending = full), 'wi' (pending = what-if values)
+  function catScore(k, mode, vals = {}, inc = {}) {
+    const list = [];
+    for (const it of k.items) {
+      const mx = num(it.max) || 0, sc = num(it.score);
+      if (sc !== null) list.push([sc, mx]);
+      else if (mode === 'cur') continue;
+      else if (it.opt) { if (mode === 'wi' && inc[it.id]) list.push([mx * clamp(num(vals[it.id]) ?? 0, 0, 100) / 100, mx]); }
+      else list.push([mode === 'worst' ? 0 : mode === 'best' ? mx : mx * clamp(num(vals[it.id]) ?? 0, 0, 100) / 100, mx]);
+    }
+    const n = num(k.best);
+    let use = list;
+    if (n && n > 0 && list.length > n) use = list.slice().sort((x, y) => (y[1] ? y[0] / y[1] : 0) - (x[1] ? x[0] / x[1] : 0)).slice(0, n);
+    let e = 0, t = 0; use.forEach(([x, m]) => { e += x; t += m; });
+    return { e, t, pct: t ? e / t : null };
+  }
   function calc(c) {
     let W = 0, worst = 0, best = 0, curNum = 0, curW = 0;
     const cats = c.cats.map(k => {
       const w = num(k.weight) || 0; W += w;
-      let earned = 0, maxG = 0, maxP = 0, pending = 0;
-      for (const it of k.items) {
-        const mx = num(it.max) || 0, sc = num(it.score);
-        if (sc !== null) { earned += sc; maxG += mx; } else if (!it.opt) { maxP += mx; pending++; }
-      }
-      const total = maxG + maxP;
-      const cPct = maxG > 0 ? earned / maxG : null;
-      const wPct = total ? earned / total : 0, bPct = total ? (earned + maxP) / total : 1;
+      const pending = k.items.filter(it => num(it.score) === null && !it.opt).length;
+      const cur = catScore(k, 'cur'), wo = catScore(k, 'worst'), be = catScore(k, 'best');
+      const cPct = cur.t > 0 ? cur.pct : null;
+      const wPct = wo.t ? wo.pct : 0, bPct = be.t ? be.pct : 1;
       worst += w * wPct; best += w * bPct;
       if (cPct !== null) { curNum += w * cPct; curW += w; }
-      return { id: k.id, name: k.name, w, earned, maxG, maxP, pending, cPct, wPct, bPct, total };
+      return { id: k.id, name: k.name, w, earned: cur.e, maxG: cur.t, pending, cPct, wPct, bPct, total: wo.t, bestN: num(k.best) };
     });
     const p = v => W ? v / W * 100 : 0;
     const r = { W, cats, worst: p(worst), best: p(best), current: curW ? curNum / curW * 100 : null, assessed: W ? curW / W * 100 : 0 };
@@ -289,13 +303,8 @@
     let W = 0, sum = 0;
     for (const k of c.cats) {
       const w = num(k.weight) || 0; W += w;
-      let earned = 0, total = 0;
-      for (const it of k.items) {
-        const mx = num(it.max) || 0, sc = num(it.score);
-        if (sc !== null) { earned += sc; total += mx; }
-        else if (!it.opt || inc[it.id]) { earned += mx * clamp(num(vals[it.id]) ?? 0, 0, 100) / 100; total += mx; }
-      }
-      sum += w * (total ? earned / total : 0);
+      const s = catScore(k, 'wi', vals, inc);
+      sum += w * (s.t ? s.pct : 0);
     }
     return W ? sum / W * 100 : 0;
   }
@@ -306,7 +315,7 @@
       k.items.forEach(it => {
         if (num(it.score) !== null) return;
         const mx = num(it.max) || 0;
-        const base = kc.total + (it.opt ? mx : 0);
+        const base = kc.bestN && kc.bestN > 0 ? mx * Math.min(kc.bestN, k.items.length) : kc.total + (it.opt ? mx : 0);
         const worth = r.W && base ? (kc.w / r.W) * (mx / base) * 100 : 0;
         out.push({ it, cat: k, worth });
       });
@@ -430,6 +439,9 @@
           <button class="icon-btn" data-a="delcat" aria-label="Delete category">${ICONS.x}</button>
         </div>
         <div class="cat-stat" data-stat="${k.id}"></div>
+        <div class="bestn"><span class="small muted">Count only the best</span>
+          <input class="field" data-f="best" inputmode="numeric" value="${esc(k.best ?? '')}" placeholder="all">
+          <span class="small muted">of these</span></div>
         ${k.items.map(it => {
           const pend = num(it.score) === null;
           return `<div data-item="${it.id}">
@@ -475,7 +487,7 @@
     const r = calc(course());
     r.cats.forEach(k => {
       const s = document.querySelector(`[data-stat="${k.id}"]`); if (!s) return;
-      s.innerHTML = [k.cPct === null ? 'No grades yet' : `Avg <b>${fmt(k.cPct * 100)}%</b>`, k.pending ? `${k.pending} pending` : '', `${fmt(k.w * k.wPct, 2)} / ${fmt(k.w, 2)} pts secured`].filter(Boolean).join(' · ');
+      s.innerHTML = [k.cPct === null ? 'No grades yet' : `Avg <b>${fmt(k.cPct * 100)}%</b>`, k.pending ? `${k.pending} pending` : '', k.bestN ? `best ${k.bestN} count` : '', `${fmt(k.w * k.wPct, 2)} / ${fmt(k.w, 2)} pts secured`].filter(Boolean).join(' · ');
     });
     const wt = $('#wTotal'), ww = $('#wWarn');
     if (wt) wt.textContent = `Total weight: ${fmt(r.W, 2)}%`;
@@ -634,6 +646,7 @@
       case 'cname': c.name = t.value; renderNav(); break;
       case 'catname': findCat(t).name = t.value; break;
       case 'weight': findCat(t).weight = num(t.value) ?? ''; break;
+      case 'best': { const v = num(t.value); findCat(t).best = v && v > 0 ? Math.floor(v) : ''; break; }
       case 'iname': case 'score': case 'max': {
         const k = findCat(t), it = findItem(t, k);
         if (f === 'iname') it.name = t.value;
