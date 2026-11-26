@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Grades">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#e9f2ed">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Grades</title>
+<style>
+  :root {
+    --forest: #10332a; --forest-2: #17463a; --mint: #8fdcb9; --mint-soft: #d9f3e6; --green: #2f9e74;
+    --orange: #f2895c; --peach: #fbdccb; --cream: #f5f1ea;
+    --text: #13201b; --muted: #6d7a74; --line: #e6ebe8; --card: #ffffff; --field: #f4f7f5;
+    --r: 24px; --shadow: 0 1px 2px rgba(16,51,42,.04), 0 8px 24px rgba(16,51,42,.06);
+    --serif: "Iowan Old Style", "Palatino", Georgia, serif;
+    --safe-b: env(safe-area-inset-bottom);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0; color: var(--text); min-height: 100vh;
+    font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #dff0e7 0%, transparent 60%),
+                radial-gradient(900px 600px at 110% 10%, #fbe7da 0%, transparent 55%),
+                linear-gradient(180deg, #eaf3ee 0%, #f5f1ea 100%);
+    background-attachment: fixed;
+    -webkit-user-select: none; user-select: none;
+  }
+  input, textarea { -webkit-user-select: text; user-select: text; }
+  input, select, button { font: inherit; color: inherit; font-size: 16px; } /* 16px stops iOS focus-zoom */
+  button { cursor: pointer; border: 0; background: none; padding: 0; }
+
+  /* ---------- layout ---------- */
+  .rail {
+    position: fixed; left: 14px; top: 14px; bottom: 14px; width: 64px; border-radius: 32px;
+    background: var(--forest); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 0; z-index: 20;
+  }
+  .logo { color: var(--mint); font: italic 700 22px var(--serif); margin-bottom: 14px; }
+  .navbtn { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #9fb8ae; transition: .2s; }
+  .navbtn svg { width: 21px; height: 21px; }
+  .navbtn.on { background: var(--mint); color: var(--forest); }
+  .wrap { margin-left: 92px; padding: 18px 20px 40px; max-width: 1240px; }
+  .tabbar { display: none; }
+
+  @media (max-width: 820px) {
+    .rail { display: none; }
+    .wrap { margin-left: 0; padding: calc(env(safe-area-inset-top) + 10px) 14px calc(110px + var(--safe-b)); }
+    .tabbar {
+      display: flex; position: fixed; left: 14px; right: 14px; bottom: calc(12px + var(--safe-b)); z-index: 20;
+      background: var(--forest); border-radius: 30px; padding: 8px; justify-content: space-around;
+      box-shadow: 0 10px 30px rgba(16,51,42,.28);
+    }
+    .tabbar .navbtn { width: auto; flex: 1; height: 50px; border-radius: 24px; flex-direction: column; gap: 2px; font-size: 10.5px; font-weight: 600; }
+    .tabbar .navbtn svg { width: 20px; height: 20px; }
+  }
+
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .top h1 { margin: 0; font-size: 26px; letter-spacing: -.5px; font-weight: 700; }
+  .top h1 em { font: italic 400 28px var(--serif); color: var(--green); }
+  .course-pill {
+    position: relative; display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 999px;
+    padding: 8px 14px 8px 10px; box-shadow: var(--shadow); max-width: 58%; min-width: 0;
+  }
+  .course-pill .dot { width: 26px; height: 26px; border-radius: 50%; background: var(--forest); color: var(--mint); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+  .course-pill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 14px; }
+  .course-pill select { position: absolute; inset: 0; opacity: 0; width: 100%; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(12, 1fr); }
+  .card { background: var(--card); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+  .s12 { grid-column: span 12; } .s8 { grid-column: span 8; } .s6 { grid-column: span 6; } .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s7 { grid-column: span 7; }
+  @media (max-width: 1050px) { .s4 { grid-column: span 6; } .s8, .s7, .s5 { grid-column: span 12; } }
+  @media (max-width: 820px) { .grid { gap: 12px; } .s6, .s4 { grid-column: span 12; } .half { grid-column: span 6 !important; } }
+
+  .card h2 { margin: 0 0 12px; font-size: 17px; font-weight: 650; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .muted { color: var(--muted); } .small { font-size: 13px; } .tiny { font-size: 11.5px; }
+
+  /* hero */
+  .hero { background: linear-gradient(135deg, var(--forest) 0%, var(--forest-2) 100%); color: #eaf5ef; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, rgba(143,220,185,.22), transparent 70%); }
+  .hero .title { font-size: 25px; font-weight: 650; letter-spacing: -.4px; line-height: 1.2; position: relative; z-index: 1; }
+  .hero .title em { font: italic 400 30px var(--serif); color: var(--mint); }
+  .hero .sub { color: #a9c4b8; font-size: 13.5px; margin-top: 6px; position: relative; z-index: 1; }
+  .hero-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .hero .big-letter { flex: none; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font: 700 30px/1 -apple-system, sans-serif; background: var(--mint); color: var(--forest); position: relative; z-index: 1; }
+  .hero .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 9px 15px; font-weight: 600; font-size: 14px; }
+  .pill.orange { background: var(--orange); color: #fff; }
+  .pill.glass { background: rgba(255,255,255,.1); color: #dff0e7; border: 1px solid rgba(255,255,255,.14); }
+  .pill.dark { background: var(--forest); color: #fff; }
+  .pill.light { background: var(--field); color: var(--text); }
+  .pill.mint { background: var(--mint); color: var(--forest); }
+  .pill.on { background: var(--forest); color: #fff; }
+  .pill.danger { background: #fde4de; color: #a83a22; }
+  .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); }
+
+  /* numbers */
+  .num { font-size: 40px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
+  .num small { font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--muted); margin-left: 2px; }
+  .seg { display: flex; gap: 4px; margin-top: 16px; height: 12px; }
+  .seg div { border-radius: 6px; min-width: 4px; }
+  .legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .bars { display: flex; align-items: flex-end; justify-content: space-around; height: 150px; gap: 10px; margin-top: 8px; }
+  .bars .b { flex: 1; max-width: 54px; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .bars .col { width: 100%; border-radius: 16px; background: var(--peach); position: relative; }
+  .bars .col.g { background: linear-gradient(180deg, #57c79a, var(--green)); }
+  .bars .col.m { background: var(--mint-soft); }
+  .bars .lab { font-size: 11.5px; color: var(--muted); }
+  .bars .tag { font-size: 12px; font-weight: 700; background: var(--forest); color: #fff; border-radius: 999px; padding: 2px 7px; }
+
+  .ticks { display: flex; gap: 2px; margin-top: 12px; }
+  .ticks i { flex: 1; height: 14px; border-radius: 2px; background: #e3ebe7; }
+  .ticks i.f { background: var(--forest-2); }
+
+  .letter { display: inline-grid; place-items: center; min-width: 38px; height: 28px; padding: 0 8px; border-radius: 999px; font-weight: 700; font-size: 13.5px; }
+  .t-good { background: var(--mint-soft); color: #0f5a3e; } .t-mid { background: #fdebcc; color: #8a4b0f; } .t-bad { background: #fbd8cf; color: #9b2c1a; }
+
+  .list-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); }
+  .list-row:first-of-type { border-top: 0; }
+  .list-row .grow { flex: 1; min-width: 0; }
+  .list-row .right { text-align: right; font-weight: 650; }
+  .mini { height: 6px; border-radius: 4px; background: #e8eeeb; overflow: hidden; margin-top: 6px; }
+  .mini div { height: 100%; border-radius: 4px; background: var(--green); }
+  .ok { color: var(--green); font-weight: 700; } .no { color: #b3bdb8; font-weight: 600; }
+
+  /* editor */
+  .field { width: 100%; background: var(--field); border: 1.5px solid transparent; border-radius: 14px; padding: 10px 12px; outline: none; min-width: 0; }
+  .field:focus { border-color: var(--green); background: #fff; }
+  .cat-head { display: flex; gap: 8px; align-items: center; }
+  .cat-head .field.name { font-weight: 650; }
+  .w-box { display: flex; align-items: center; background: var(--forest); color: #fff; border-radius: 14px; padding: 0 10px 0 4px; flex: none; }
+  .w-box input { width: 54px; background: transparent; border: 0; color: #fff; text-align: right; padding: 10px 2px; outline: none; font-weight: 700; }
+  .icon-btn { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: var(--field); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .cat-stat { font-size: 12.5px; color: var(--muted); margin: 10px 2px 4px; }
+  .item { display: grid; grid-template-columns: 1fr 66px 10px 58px 40px; gap: 6px; align-items: center; margin-top: 8px; }
+  .item .field { padding: 9px 10px; }
+  .item .score, .item .max { text-align: center; }
+  .item .slash { color: var(--muted); text-align: center; }
+  .item.pending .score { background: #fff; border: 1.5px dashed #c7d4ce; }
+  .item.skip { opacity: .5; }
+  .item-sub { display: flex; justify-content: space-between; align-items: center; margin: 4px 2px 0; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+  .switch input { appearance: none; -webkit-appearance: none; width: 36px; height: 22px; border-radius: 999px; background: #d5dfda; position: relative; margin: 0; transition: .2s; flex: none; }
+  .switch input::after { content: ""; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .switch input:checked { background: var(--green); }
+  .switch input:checked::after { left: 17px; }
+  .bulk { display: flex; gap: 6px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .bulk .field { width: 62px; text-align: center; padding: 8px; }
+  .warn { color: #b3401f; font-size: 13px; margin-top: 8px; }
+
+  /* what-if */
+  .wi-item { padding: 14px 0; border-top: 1px solid var(--line); }
+  .wi-item:first-of-type { border-top: 0; padding-top: 4px; }
+  .wi-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .wi-val { display: flex; align-items: center; gap: 4px; }
+  .wi-val input { width: 64px; text-align: center; background: var(--field); border: 1.5px solid transparent; border-radius: 12px; padding: 6px; font-weight: 700; outline: none; }
+  .wi-val input:focus { border-color: var(--green); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; background: transparent; margin: 6px 0 0; touch-action: pan-y; }
+  input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 6px; background: linear-gradient(90deg, var(--green) var(--p, 50%), #e3ebe7 var(--p, 50%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 3px solid var(--forest); margin-top: -9px; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  input[type=range]::-moz-range-track { height: 10px; border-radius: 6px; background: #e3ebe7; }
+  input[type=range]::-moz-range-progress { height: 10px; border-radius: 6px; background: var(--green); }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--forest); }
+  input[type=range]:disabled { opacity: .35; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .gtable-wrap { overflow-x: auto; margin: 0 -4px; -webkit-overflow-scrolling: touch; }
+  table.g { border-collapse: separate; border-spacing: 3px; width: 100%; table-layout: fixed; }
+  table.g th { font-size: 11.5px; color: var(--muted); font-weight: 600; padding: 4px; }
+  table.g td { text-align: center; border-radius: 10px; padding: 7px 0; font-size: 12.5px; font-weight: 700; line-height: 1.15; }
+  table.g td small { display: block; font-size: 9.5px; font-weight: 600; opacity: .8; }
+  .sel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .sel-row label { font-size: 11.5px; color: var(--muted); display: block; margin: 0 0 4px 4px; }
+  select.field { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 28px; }
+
+  .scen { display: flex; align-items: center; gap: 10px; background: var(--field); border-radius: 18px; padding: 10px 10px 10px 14px; margin-top: 8px; }
+  .scen .grow { flex: 1; min-width: 0; }
+  .scen b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .course-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 20px; background: var(--field); margin-top: 8px; }
+  .course-card.on { background: var(--mint-soft); outline: 2px solid var(--green); }
+  .course-card .grow { flex: 1; min-width: 0; }
+  .course-card b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .scale-row { display: grid; grid-template-columns: 1fr 1fr 40px; gap: 8px; margin-top: 8px; align-items: center; }
+  .empty { text-align: center; padding: 26px 8px; color: var(--muted); }
+  .fade { animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<nav class="rail" id="rail"></nav>
+<div class="wrap">
+  <div class="top">
+    <h1 id="pageTitle"></h1>
+    <label class="course-pill" aria-label="Switch course">
+      <span class="dot" id="pillDot"></span><span id="pillName"></span>
+      <select id="courseSelect"></select>
+    </label>
+  </div>
+  <div id="view"></div>
+</div>
+<nav class="tabbar" id="tabbar"></nav>
+
+<script>
+(() => {
+  /* ---------- no zoom (pinch + double-tap) ---------- */
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
+  let lastTouch = 0;
+  document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouch < 320 && !e.target.closest('input, select, textarea, button, label')) e.preventDefault();
+    lastTouch = now;
+  }, { passive: false });
+  document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+  /* ---------- helpers ---------- */
+  const KEY = 'gradecalc.v1';
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = v => (v === '' || v === null || v === undefined || isNaN(+v)) ? null : +v;
+  const fmt = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toFixed(d);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  const DEFAULT_SCALE = [
+    { l: 'A+', min: 95 }, { l: 'A', min: 90 }, { l: 'B+', min: 85 }, { l: 'B', min: 80 },
+    { l: 'C+', min: 75 }, { l: 'C', min: 70 }, { l: 'D+', min: 65 }, { l: 'D', min: 60 }, { l: 'F', min: 0 }
+  ];
+  const item = (name, max, score = null, opt = false) => ({ id: uid(), name, max, score, opt });
+  const cat = (name, weight, items) => ({ id: uid(), name, weight, items });
+  const wiDefaults = () => ({ vals: {}, inc: {}, rowId: null, colId: null, scenarios: [] });
+
+  function blankCourse() {
+    return {
+      id: uid(), name: 'New course', scale: clone(DEFAULT_SCALE), wi: wiDefaults(),
+      cats: [cat('Assignments', 20, [item('Assignment 1', 10)]), cat('Quizzes', 10, [item('Quiz 1', 10)]),
+        cat('Midterm', 30, [item('Midterm', 100)]), cat('Final Exam', 40, [item('Final', 100)])]
+    };
+  }
+
+  /* ---------- storage ---------- */
+  let state;
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+  if (!state || !Array.isArray(state.courses) || !state.courses.length) { const c = blankCourse(); state = { courses: [c], active: c.id }; }
+  state.courses.forEach(c => { c.wi = Object.assign(wiDefaults(), c.wi || {}); c.scale = c.scale || clone(DEFAULT_SCALE); });
+  state.tab = state.tab || 'home';
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+  const course = () => state.courses.find(c => c.id === state.active) || state.courses[0];
+
+  /* ---------- math ---------- */
+  function calc(c) {
+    let W = 0, worst = 0, best = 0, curNum = 0, curW = 0;
+    const cats = c.cats.map(k => {
+      const w = num(k.weight) || 0; W += w;
+      let earned = 0, maxG = 0, maxP = 0, pending = 0;
+      for (const it of k.items) {
+        const mx = num(it.max) || 0, sc = num(it.score);
+        if (sc !== null) { earned += sc; maxG += mx; } else if (!it.opt) { maxP += mx; pending++; }
+      }
+      const total = maxG + maxP;
+      const cPct = maxG > 0 ? earned / maxG : null;
+      const wPct = total ? earned / total : 0, bPct = total ? (earned + maxP) / total : 1;
+      worst += w * wPct; best += w * bPct;
+      if (cPct !== null) { curNum += w * cPct; curW += w; }
+      return { id: k.id, name: k.name, w, earned, maxG, maxP, pending, cPct, wPct, bPct, total };
+    });
+    const p = v => W ? v / W * 100 : 0;
+    const r = { W, cats, worst: p(worst), best: p(best), current: curW ? curNum / curW * 100 : null, assessed: W ? curW / W * 100 : 0 };
+    r.remaining = r.best - r.worst;
+    r.lost = Math.max(0, r.assessed - r.worst);
+    r.pace = r.current === null ? null : r.worst + r.remaining * r.current / 100;
+    return r;
+  }
+  // projected final with what-if values (vals: itemId -> % , inc: optional itemId -> bool)
+  function project(c, vals, inc) {
+    let W = 0, sum = 0;
+    for (const k of c.cats) {
+      const w = num(k.weight) || 0; W += w;
+      let earned = 0, total = 0;
+      for (const it of k.items) {
+        const mx = num(it.max) || 0, sc = num(it.score);
+        if (sc !== null) { earned += sc; total += mx; }
+        else if (!it.opt || inc[it.id]) { earned += mx * clamp(num(vals[it.id]) ?? 0, 0, 100) / 100; total += mx; }
+      }
+      sum += w * (total ? earned / total : 0);
+    }
+    return W ? sum / W * 100 : 0;
+  }
+  function pendingItems(c) {
+    const r = calc(c), out = [];
+    c.cats.forEach((k, ci) => {
+      const kc = r.cats[ci];
+      k.items.forEach(it => {
+        if (num(it.score) !== null) return;
+        const mx = num(it.max) || 0;
+        const base = kc.total + (it.opt ? mx : 0);
+        const worth = r.W && base ? (kc.w / r.W) * (mx / base) * 100 : 0;
+        out.push({ it, cat: k, worth });
+      });
+    });
+    return out;
+  }
+  const sortedScale = c => c.scale.filter(s => s.l !== '').slice().sort((a, b) => (num(b.min) || 0) - (num(a.min) || 0));
+  function letter(c, p) {
+    if (p === null || p === undefined) return '—';
+    const sc = sortedScale(c); const hit = sc.find(s => p + 1e-9 >= (num(s.min) || 0));
+    return hit ? hit.l : (sc.length ? sc[sc.length - 1].l : '—');
+  }
+  function tone(c, l) {
+    const sc = sortedScale(c), i = sc.findIndex(s => s.l === l);
+    if (i < 0) return 't-mid'; if (i === sc.length - 1) return 't-bad';
+    const r = i / Math.max(1, sc.length - 1); return r < 0.45 ? 't-good' : r < 0.8 ? 't-mid' : 't-bad';
+  }
+  const badge = (c, p) => { const l = letter(c, p); return `<span class="letter ${tone(c, l)}">${esc(l)}</span>`; };
+
+  /* ---------- nav ---------- */
+  const ICONS = {
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>',
+    grades: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg>',
+    whatif: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>',
+    courses: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    arrow: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+  };
+  const TABS = [['home', 'Home'], ['grades', 'Grades'], ['whatif', 'What-if'], ['courses', 'Courses']];
+  const TITLES = { home: 'Overview', grades: 'My <em>grades</em>', whatif: 'What <em>if</em>…', courses: 'Courses' };
+  function renderNav() {
+    const btns = TABS.map(([k, l]) => `<button class="navbtn ${state.tab === k ? 'on' : ''}" data-tab="${k}" aria-label="${l}">${ICONS[k]}<span class="tl">${l}</span></button>`).join('');
+    $('#rail').innerHTML = `<div class="logo">g/</div>` + btns.replace(/<span class="tl">.*?<\/span>/g, '');
+    $('#tabbar').innerHTML = btns;
+    $('#pageTitle').innerHTML = TITLES[state.tab];
+    const c = course();
+    $('#pillName').textContent = c.name || 'Untitled';
+    $('#pillDot').textContent = (c.name || '?').trim().slice(0, 2).toUpperCase();
+    $('#courseSelect').innerHTML = state.courses.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.name || 'Untitled')}</option>`).join('');
+  }
+  function go(tab) { state.tab = tab; save(); render(); window.scrollTo(0, 0); }
+  function render() { renderNav(); ({ home: renderHome, grades: renderGrades, whatif: renderWhatIf, courses: renderCourses })[state.tab](); }
+
+  /* ---------- HOME ---------- */
+  function renderHome() {
+    const c = course(), r = calc(c);
+    const scale = sortedScale(c);
+    const needRows = scale.slice(0, -1).map(s => {
+      const t = num(s.min) || 0; let txt, bar = 0;
+      if (r.worst + 1e-9 >= t) { txt = '<span class="ok">Secured ✓</span>'; bar = 100; }
+      else if (r.remaining <= 1e-9 || r.best + 1e-9 < t) { txt = '<span class="no">Not possible</span>'; bar = 0; }
+      else { const x = (t - r.worst) / r.remaining * 100; txt = `${fmt(x)}%`; bar = 100 - x; }
+      return `<div class="list-row">${badge(c, t)}<div class="grow"><div class="small muted">≥ ${esc(s.min)}% final</div><div class="mini"><div style="width:${clamp(bar, 0, 100)}%"></div></div></div><div class="right">${txt}</div></div>`;
+    }).join('');
+    const ticks = Array.from({ length: 30 }, (_, i) => `<i class="${i < Math.round(r.assessed / 100 * 30) ? 'f' : ''}"></i>`).join('');
+    const bar = (v, cls, lab) => `<div class="b"><span class="tag">${v === null ? '—' : fmt(v, 0)}</span><div class="col ${cls}" style="height:${v === null ? 4 : clamp(v, 4, 100) * 0.8}%"></div><span class="lab">${lab}</span></div>`;
+
+    $('#view').innerHTML = `<div class="grid fade">
+      <div class="card hero s12">
+        <div class="hero-row">
+          <div><div class="title">You're at <em>${fmt(r.worst)}%</em> right now</div>
+          <div class="sub">${esc(c.name)} · everything not graded yet counts as 0</div></div>
+          <div class="big-letter">${esc(letter(c, r.worst))}</div>
+        </div>
+        <div class="actions">
+          <button class="pill orange" data-tab="whatif">Try a what-if ${ICONS.arrow}</button>
+          <span class="pill glass"><span class="live"></span> ${fmt(r.remaining)}% still to come</span>
+        </div>
+      </div>
+
+      <div class="card s4 half">
+        <h2>Secured</h2>
+        <div class="num">${fmt(r.worst)}<small>/ 100</small></div>
+        <div class="seg">
+          <div style="flex:${Math.max(r.worst, .01)};background:var(--forest-2)"></div>
+          <div style="flex:${Math.max(r.lost, .01)};background:var(--orange)"></div>
+          <div style="flex:${Math.max(r.remaining, .01)};background:var(--mint)"></div>
+        </div>
+        <div class="legend"><span><i style="background:var(--forest-2)"></i>${fmt(r.worst)}% earned</span><span><i style="background:var(--orange)"></i>${fmt(r.lost)}% lost</span><span><i style="background:var(--mint)"></i>${fmt(r.remaining)}% left</span></div>
+      </div>
+
+      <div class="card s4 half">
+        <h2>Outlook <span class="tiny muted">final %</span></h2>
+        <div class="bars">${bar(r.worst, '', 'Worst')}${bar(r.pace, 'g', 'Pace')}${bar(r.best, 'm', 'Best')}</div>
+      </div>
+
+      <div class="card s4">
+        <h2>Performance so far</h2>
+        <div style="display:flex;align-items:baseline;gap:10px"><div class="num">${r.current === null ? '—' : fmt(r.current)}<small>%</small></div>${r.current === null ? '' : badge(c, r.current)}</div>
+        <div class="small muted" style="margin-top:6px">on the ${fmt(r.assessed, 0)}% of the course that's graded</div>
+        <div class="ticks">${ticks}</div>
+        <div class="small muted" style="margin-top:10px">Keep this pace → <b style="color:var(--text)">${r.pace === null ? '—' : fmt(r.pace) + '%'}</b> ${r.pace === null ? '' : badge(c, r.pace)}</div>
+      </div>
+
+      <div class="card s7">
+        <h2>What do I need? <span class="tiny muted">avg on what's left</span></h2>
+        ${needRows || '<div class="empty">Add a grade scale.</div>'}
+      </div>
+
+      <div class="card s5">
+        <h2>Categories <button class="pill light" data-tab="grades" style="padding:6px 12px;font-size:13px">Edit</button></h2>
+        ${r.cats.map(k => `<div class="list-row"><div class="grow"><b>${esc(k.name)}</b><div class="small muted">${fmt(k.w, 0)}% of grade · ${k.cPct === null ? 'no grades yet' : 'avg ' + fmt(k.cPct * 100) + '%'}${k.pending ? ' · ' + k.pending + ' pending' : ''}</div><div class="mini"><div style="width:${k.wPct * 100}%"></div></div></div><div class="right">${fmt(k.w * k.wPct, 1)}<span class="muted small">/${fmt(k.w, 0)}</span></div></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  /* ---------- GRADES ---------- */
+  function renderGrades() {
+    const c = course();
+    $('#view').innerHTML = `<div class="grid fade">
+      <div class="card s12">
+        <div class="small muted" style="margin:0 0 6px 4px">Course name</div>
+        <input class="field" data-f="cname" value="${esc(c.name)}" placeholder="e.g. EE 201" style="font-size:18px;font-weight:650">
+        <div class="small muted" style="margin:10px 4px 0">Leave a score <b>empty</b> if it isn't graded yet. Turn on <b>Optional</b> for items that only count if you do them.</div>
+      </div>
+      ${c.cats.map(k => `
+      <div class="card s6" data-cat="${k.id}">
+        <div class="cat-head">
+          <input class="field name" data-f="catname" value="${esc(k.name)}" placeholder="Category">
+          <label class="w-box"><input data-f="weight" inputmode="decimal" value="${esc(k.weight)}">%</label>
+          <button class="icon-btn" data-a="delcat" aria-label="Delete category">${ICONS.x}</button>
+        </div>
+        <div class="cat-stat" data-stat="${k.id}"></div>
+        ${k.items.map(it => {
+          const pend = num(it.score) === null;
+          return `<div data-item="${it.id}">
+            <div class="item ${pend ? (it.opt ? 'skip' : 'pending') : ''}">
+              <input class="field" data-f="iname" value="${esc(it.name)}" placeholder="Item">
+              <input class="field score" data-f="score" inputmode="decimal" value="${esc(it.score ?? '')}" placeholder="—">
+              <span class="slash">/</span>
+              <input class="field max" data-f="max" inputmode="decimal" value="${esc(it.max)}">
+              <button class="icon-btn" data-a="delitem" aria-label="Delete item">${ICONS.x}</button>
+            </div>
+            <div class="item-sub"><label class="switch"><input type="checkbox" data-f="opt" ${it.opt ? 'checked' : ''}>Optional</label></div>
+          </div>`;
+        }).join('')}
+        <div class="bulk">
+          <button class="pill light" data-a="additem">+ Item</button>
+          <span class="small muted">or add</span>
+          <input class="field" data-f="bulkN" inputmode="numeric" value="5">
+          <span class="small muted">out of</span>
+          <input class="field" data-f="bulkMax" inputmode="decimal" value="${esc(k.items[0]?.max ?? 10)}">
+          <button class="pill dark" data-a="bulk">Add</button>
+        </div>
+      </div>`).join('')}
+      <div class="card s12">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="pill orange" data-a="addcat">+ Category</button>
+          <span class="small muted" id="wTotal"></span>
+        </div>
+        <div class="warn" id="wWarn"></div>
+      </div>
+      <div class="card s12">
+        <h2>Grade scale <button class="pill light" data-a="resetscale" style="padding:6px 12px;font-size:13px">Reset</button></h2>
+        <div class="small muted">Letter and the minimum final % for it.</div>
+        ${c.scale.map((s, i) => `<div class="scale-row" data-si="${i}">
+          <input class="field" data-f="sl" value="${esc(s.l)}" placeholder="Letter">
+          <input class="field" data-f="smin" inputmode="decimal" value="${esc(s.min)}" placeholder="Min %">
+          <button class="icon-btn" data-a="delscale">${ICONS.x}</button></div>`).join('')}
+        <button class="pill light" data-a="addscale" style="margin-top:10px">+ Letter</button>
+      </div>
+    </div>`;
+    updateGradeStats();
+  }
+  function updateGradeStats() {
+    const r = calc(course());
+    r.cats.forEach(k => {
+      const s = document.querySelector(`[data-stat="${k.id}"]`); if (!s) return;
+      s.innerHTML = [k.cPct === null ? 'No grades yet' : `Avg <b>${fmt(k.cPct * 100)}%</b>`, k.pending ? `${k.pending} pending` : '', `${fmt(k.w * k.wPct, 2)} / ${fmt(k.w, 2)} pts secured`].filter(Boolean).join(' · ');
+    });
+    const wt = $('#wTotal'), ww = $('#wWarn');
+    if (wt) wt.textContent = `Total weight: ${fmt(r.W, 2)}%`;
+    if (ww) ww.textContent = Math.abs(r.W - 100) > 0.001 ? `⚠ Weights add up to ${fmt(r.W, 2)}%, not 100%. Results are scaled to 100.` : '';
+  }
+
+  /* ---------- WHAT-IF ---------- */
+  function wiVal(c, id) {
+    const v = num(c.wi.vals[id]);
+    if (v !== null) return v;
+    const r = calc(c); return r.current === null ? 80 : Math.round(r.current);
+  }
+  function wiVals(c) { const o = {}; pendingItems(c).forEach(p => o[p.it.id] = wiVal(c, p.it.id)); return o; }
+  function renderWhatIf() {
+    const c = course(), pend = pendingItems(c);
+    if (!pend.length) {
+      $('#view').innerHTML = `<div class="grid fade"><div class="card s12 empty">Everything in ${esc(c.name)} is graded. 🎉<br>Leave a score empty in <b>Grades</b> to play what-if with it.</div></div>`;
+      return;
+    }
+    const ids = pend.map(p => p.it.id);
+    const byWorth = pend.filter(p => !p.it.opt).sort((a, b) => b.worth - a.worth);
+    if (!ids.includes(c.wi.rowId)) c.wi.rowId = (byWorth[0] || pend[0]).it.id;
+    if (!ids.includes(c.wi.colId) || c.wi.colId === c.wi.rowId) c.wi.colId = (byWorth.find(p => p.it.id !== c.wi.rowId) || pend.find(p => p.it.id !== c.wi.rowId) || {}).it?.id || null;
+    const opts = sel => pend.map(p => `<option value="${p.it.id}" ${p.it.id === sel ? 'selected' : ''}>${esc(p.it.name)}</option>`).join('');
+
+    $('#view').innerHTML = `<div class="grid fade">
+      <div class="card hero s12" id="wiHero"></div>
+
+      <div class="card s7">
+        <h2>Still to come <span class="tiny muted">set what you think you'll get</span></h2>
+        <div class="chips" style="margin-bottom:8px">
+          <button class="pill light" data-preset="0">All 0</button>
+          <button class="pill light" data-preset="pace">My pace</button>
+          <button class="pill light" data-preset="75">All 75</button>
+          <button class="pill light" data-preset="90">All 90</button>
+          <button class="pill mint" data-preset="100">All 100</button>
+        </div>
+        ${pend.map(p => {
+          const v = wiVal(c, p.it.id), off = p.it.opt && !c.wi.inc[p.it.id];
+          return `<div class="wi-item" data-wi="${p.it.id}">
+            <div class="wi-top">
+              <div><b>${esc(p.it.name)}</b><div class="tiny muted">${esc(p.cat.name)} · ≈ ${fmt(p.worth)}% of final grade${p.it.opt ? ' · optional' : ''}</div></div>
+              <div class="wi-val"><input data-f="wiNum" inputmode="decimal" value="${v}" ${off ? 'disabled' : ''}><span class="muted">%</span></div>
+            </div>
+            <input type="range" min="0" max="100" step="1" value="${v}" data-f="wiRange" style="--p:${v}%" ${off ? 'disabled' : ''}>
+            ${p.it.opt ? `<label class="switch" style="margin-top:4px"><input type="checkbox" data-f="wiInc" ${off ? '' : 'checked'}>I'll do this one</label>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="card s5">
+        <h2>Results grid</h2>
+        ${pend.length > 1 ? `<div class="sel-row">
+          <div><label>Rows</label><select class="field" data-f="rowSel">${opts(c.wi.rowId)}</select></div>
+          <div><label>Columns</label><select class="field" data-f="colSel">${opts(c.wi.colId)}</select></div>
+        </div>` : ''}
+        <div class="gtable-wrap" id="gridOut"></div>
+        <div class="tiny muted" style="margin-top:8px">${pend.length > 2 ? 'Everything else stays at the values you set on the left.' : 'Each cell = your final grade.'}</div>
+      </div>
+
+      <div class="card s12">
+        <h2>Scenarios</h2>
+        <div style="display:flex;gap:8px">
+          <input class="field" id="scName" placeholder="Name this scenario (e.g. Realistic)">
+          <button class="pill dark" data-a="saveScen" style="flex:none">Save</button>
+        </div>
+        <div id="scenList"></div>
+      </div>
+    </div>`;
+    updateWhatIf();
+  }
+  function updateWhatIf() {
+    const c = course(), r = calc(c), vals = wiVals(c), inc = c.wi.inc;
+    const fin = project(c, vals, inc);
+    const diff = fin - r.worst;
+    $('#wiHero').innerHTML = `
+      <div class="hero-row">
+        <div><div class="title">If that happens, you'll finish with <em>${fmt(fin)}%</em></div>
+        <div class="sub">${esc(c.name)} · +${fmt(diff)}% on top of the ${fmt(r.worst)}% you've secured</div></div>
+        <div class="big-letter">${esc(letter(c, fin))}</div>
+      </div>`;
+
+    // grid
+    const out = $('#gridOut');
+    if (out) {
+      const levels = [100, 90, 80, 70, 60, 50];
+      const rowId = c.wi.rowId, colId = c.wi.colId;
+      const name = id => pendingItems(c).find(p => p.it.id === id)?.it.name || '';
+      const cell = (a, b) => {
+        const v = Object.assign({}, vals), i2 = Object.assign({}, inc);
+        v[rowId] = a; i2[rowId] = true;
+        if (colId) { v[colId] = b; i2[colId] = true; }
+        const p = project(c, v, i2), l = letter(c, p);
+        return `<td class="${tone(c, l)}">${esc(l)}<small>${fmt(p)}</small></td>`;
+      };
+      out.innerHTML = colId
+        ? `<div class="tiny muted" style="margin:0 0 4px 4px">↓ ${esc(name(rowId))} &nbsp;·&nbsp; → ${esc(name(colId))}</div><table class="g"><tr><th></th>${levels.map(l => `<th>${l}</th>`).join('')}</tr>
+           ${levels.map(a => `<tr><th>${a}</th>${levels.map(b => cell(a, b)).join('')}</tr>`).join('')}</table>`
+        : `<table class="g"><tr><th style="text-align:left">${esc(name(rowId))}</th>${levels.map(l => `<th>${l}</th>`).join('')}</tr><tr><th></th>${levels.map(a => cell(a)).join('')}</tr></table>`;
+    }
+
+    // scenarios
+    const list = $('#scenList');
+    if (list) {
+      list.innerHTML = c.wi.scenarios.length ? c.wi.scenarios.map(s => {
+        const p = project(c, Object.assign({}, vals, s.vals), s.inc || {});
+        return `<div class="scen" data-sid="${s.id}">${badge(c, p)}<div class="grow"><b>${esc(s.name)}</b><span class="tiny muted">${fmt(p)}% final</span></div>
+          <button class="pill light" data-a="loadScen" style="padding:7px 12px;font-size:13px">Load</button>
+          <button class="icon-btn" data-a="delScen">${ICONS.x}</button></div>`;
+      }).join('') : '<div class="small muted" style="margin-top:10px">Save a few (like "Realistic", "Best effort", "Bad day") to compare them here.</div>';
+    }
+  }
+  function setWi(id, v, from) {
+    const c = course(); v = clamp(Math.round((num(v) ?? 0) * 10) / 10, 0, 100);
+    c.wi.vals[id] = v; save();
+    const box = document.querySelector(`[data-wi="${id}"]`);
+    if (box) {
+      const rg = $('[data-f="wiRange"]', box), nb = $('[data-f="wiNum"]', box);
+      if (from !== 'range') rg.value = v;
+      rg.style.setProperty('--p', v + '%');
+      if (from !== 'num') nb.value = v;
+    }
+    updateWhatIf();
+  }
+
+  /* ---------- COURSES ---------- */
+  function renderCourses() {
+    $('#view').innerHTML = `<div class="grid fade">
+      <div class="card s12">
+        <h2>Your courses <button class="pill orange" data-a="newCourse" style="padding:7px 14px">+ New</button></h2>
+        ${state.courses.map(c => { const r = calc(c); return `
+          <div class="course-card ${c.id === state.active ? 'on' : ''}" data-cid="${c.id}">
+            ${badge(c, r.worst)}
+            <div class="grow" data-a="pickCourse"><b>${esc(c.name || 'Untitled')}</b><span class="tiny muted">${fmt(r.worst)}% now · ${fmt(r.remaining)}% left · best ${fmt(r.best)}%</span></div>
+            <button class="pill light" data-a="dupCourse" style="padding:7px 11px;font-size:13px">Copy</button>
+            <button class="icon-btn" data-a="delCourse">${ICONS.x}</button>
+          </div>`; }).join('')}
+        <div class="tiny muted" style="margin-top:12px">"Copy" duplicates a course's setup with empty scores — handy for a new course with the same breakdown. Data is saved on this device.</div>
+      </div>
+    </div>`;
+  }
+
+  /* ---------- events ---------- */
+  const findCat = el => { const id = el.closest('[data-cat]')?.dataset.cat; return course().cats.find(k => k.id === id); };
+  const findItem = (el, k) => { const id = el.closest('[data-item]')?.dataset.item; return k?.items.find(i => i.id === id); };
+  const ask = m => { try { return window.confirm(m); } catch (e) { return true; } };
+  function nextName(k) {
+    const base = (k.items.at(-1)?.name || k.name || 'Item').replace(/\s*\d+\s*$/, '').trim() || 'Item';
+    return `${base} ${k.items.length + 1}`;
+  }
+
+  document.addEventListener('input', e => {
+    const t = e.target, f = t.dataset.f; if (!f) return;
+    const c = course();
+    switch (f) {
+      case 'cname': c.name = t.value; renderNav(); break;
+      case 'catname': findCat(t).name = t.value; break;
+      case 'weight': findCat(t).weight = num(t.value) ?? ''; break;
+      case 'iname': case 'score': case 'max': {
+        const k = findCat(t), it = findItem(t, k);
+        if (f === 'iname') it.name = t.value;
+        if (f === 'max') it.max = num(t.value) ?? '';
+        if (f === 'score') {
+          it.score = num(t.value);
+          const row = t.closest('.item');
+          row.classList.toggle('pending', it.score === null && !it.opt);
+          row.classList.toggle('skip', it.score === null && it.opt);
+        }
+        break;
+      }
+      case 'sl': c.scale[+t.closest('[data-si]').dataset.si].l = t.value; break;
+      case 'smin': c.scale[+t.closest('[data-si]').dataset.si].min = num(t.value) ?? ''; break;
+      case 'wiRange': setWi(t.closest('[data-wi]').dataset.wi, t.value, 'range'); return;
+      case 'wiNum': if (t.value !== '') setWi(t.closest('[data-wi]').dataset.wi, t.value, 'num'); return;
+      default: return;
+    }
+    save(); updateGradeStats();
+  });
+
+  document.addEventListener('change', e => {
+    const t = e.target, f = t.dataset.f, c = course();
+    if (t.id === 'courseSelect') { state.active = t.value; save(); render(); return; }
+    if (f === 'opt') { const k = findCat(t), it = findItem(t, k); it.opt = t.checked; save(); renderGrades(); }
+    if (f === 'wiInc') { c.wi.inc[t.closest('[data-wi]').dataset.wi] = t.checked; save(); renderWhatIf(); }
+    if (f === 'rowSel') { c.wi.rowId = t.value; if (c.wi.colId === t.value) c.wi.colId = null; save(); renderWhatIf(); }
+    if (f === 'colSel') { c.wi.colId = t.value; if (c.wi.rowId === t.value) c.wi.rowId = null; save(); renderWhatIf(); }
+    if (f === 'wiNum') setWi(t.closest('[data-wi]').dataset.wi, t.value);
+  });
+
+  document.addEventListener('click', e => {
+    const tb = e.target.closest('[data-tab]'); if (tb) { go(tb.dataset.tab); return; }
+    const pr = e.target.closest('[data-preset]');
+    if (pr) {
+      const c = course(), r = calc(c), p = pr.dataset.preset;
+      const v = p === 'pace' ? (r.current === null ? 80 : Math.round(r.current)) : +p;
+      pendingItems(c).forEach(x => c.wi.vals[x.it.id] = v);
+      save(); renderWhatIf(); return;
+    }
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a, c = course();
+    switch (a) {
+      case 'addcat': c.cats.push(cat('New category', 0, [item('Item 1', 10)])); break;
+      case 'delcat': { const k = findCat(b); if (!ask(`Delete "${k.name}"?`)) return; c.cats = c.cats.filter(x => x !== k); break; }
+      case 'additem': { const k = findCat(b); k.items.push(item(nextName(k), k.items.at(-1)?.max ?? 10)); break; }
+      case 'delitem': { const k = findCat(b), it = findItem(b, k); k.items = k.items.filter(x => x !== it); break; }
+      case 'bulk': {
+        const k = findCat(b), box = b.closest('.bulk');
+        const n = clamp(num($('[data-f="bulkN"]', box).value) || 1, 1, 50), mx = num($('[data-f="bulkMax"]', box).value) ?? 10;
+        for (let i = 0; i < n; i++) k.items.push(item(nextName(k), mx));
+        break;
+      }
+      case 'addscale': c.scale.push({ l: '', min: '' }); break;
+      case 'delscale': c.scale.splice(+b.closest('[data-si]').dataset.si, 1); break;
+      case 'resetscale': c.scale = clone(DEFAULT_SCALE); break;
+      case 'saveScen': {
+        const nm = ($('#scName').value || '').trim() || `Scenario ${c.wi.scenarios.length + 1}`;
+        c.wi.scenarios.push({ id: uid(), name: nm, vals: wiVals(c), inc: Object.assign({}, c.wi.inc) });
+        save(); $('#scName').value = ''; updateWhatIf(); return;
+      }
+      case 'loadScen': { const s = c.wi.scenarios.find(x => x.id === b.closest('[data-sid]').dataset.sid); Object.assign(c.wi.vals, s.vals); c.wi.inc = Object.assign({}, s.inc); save(); renderWhatIf(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      case 'delScen': c.wi.scenarios = c.wi.scenarios.filter(x => x.id !== b.closest('[data-sid]').dataset.sid); save(); updateWhatIf(); return;
+      case 'newCourse': { const n = blankCourse(); state.courses.push(n); state.active = n.id; save(); go('grades'); return; }
+      case 'pickCourse': state.active = b.closest('[data-cid]').dataset.cid; save(); go('home'); return;
+      case 'dupCourse': {
+        const src = state.courses.find(x => x.id === b.closest('[data-cid]').dataset.cid), n = clone(src);
+        n.id = uid(); n.name = src.name + ' (copy)'; n.wi = wiDefaults();
+        n.cats.forEach(k => { k.id = uid(); k.items.forEach(i => { i.id = uid(); i.score = null; }); });
+        state.courses.push(n); save(); render(); return;
+      }
+      case 'delCourse': {
+        const x = state.courses.find(y => y.id === b.closest('[data-cid]').dataset.cid);
+        if (!ask(`Delete "${x.name}"? This can't be undone.`)) return;
+        state.courses = state.courses.filter(y => y !== x);
+        if (!state.courses.length) state.courses.push(blankCourse());
+        if (!state.courses.find(y => y.id === state.active)) state.active = state.courses[0].id;
+        save(); render(); return;
+      }
+      default: return;
+    }
+    save(); render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
