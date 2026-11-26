@@ -102,7 +102,7 @@
   .live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); }
 
   /* numbers */
-  .num { font-size: 40px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
+  .num { white-space: nowrap; font-size: 40px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; }
   .num small { font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--muted); margin-left: 2px; }
   .seg { display: flex; gap: 4px; margin-top: 16px; height: 12px; }
   .seg div { border-radius: 6px; min-width: 4px; }
@@ -292,9 +292,11 @@
       return { id: k.id, name: k.name, w, earned: cur.e, maxG: cur.t, pending, cPct, wPct, bPct, total: wo.t, bestN: num(k.best) };
     });
     const p = v => W ? v / W * 100 : 0;
-    const r = { W, cats, worst: p(worst), best: p(best), current: curW ? curNum / curW * 100 : null, assessed: W ? curW / W * 100 : 0 };
-    r.remaining = r.best - r.worst;
-    r.lost = Math.max(0, r.assessed - r.worst);
+    const r = { W, cats, worst: p(worst), best: p(best) };
+    r.remaining = Math.max(0, r.best - r.worst);      // still possible to earn
+    r.lost = Math.max(0, 100 - r.best);               // can no longer be earned
+    r.assessed = Math.max(0, 100 - r.remaining);      // share of the course already decided
+    r.current = r.assessed > 1e-9 ? r.worst / r.assessed * 100 : null;
     r.pace = r.current === null ? null : r.worst + r.remaining * r.current / 100;
     return r;
   }
